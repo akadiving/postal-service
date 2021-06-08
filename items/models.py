@@ -34,21 +34,31 @@ class Item(models.Model):
     weight = models.IntegerField()
     price = MoneyField(max_digits=14, decimal_places=2, default_currency='USD')
     barcode = models.CharField(max_length=200, unique=True, default=generate_barcode)
+    barcode_image = models.ImageField(upload_to='images/', blank=True)
     in_manifest = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f'{self.owner.username} {self.id} {self.sender_name} {self.sender_surname} \
-        {self.receiver_city} {self.weight} {self.in_manifest} \
-        {self.price} {self.barcode}'
+        return f'{self.owner.username} {self.id} {self.sender_name} \
+        {self.sender_surname} {self.receiver_city} {self.weight}\
+        {self.price} {self.barcode} {self.in_manifest} \
+        {self.barcode_image}'
 
     class Meta:
         ordering = ('-created_at',)
 
-    def generate_barcode_image(self):
+    def get_barcode_image(self):
+        if self.barcode_image:
+            return 'http://127.0.0.1:8000' + self.barcode_image.url
+        return None
+
+    def save(self, *args, **kwargs):
         code_39 = barcode.get_barcode_class('code39')
         ean = code_39(f'{self.barcode}', writer=ImageWriter())
         buffer = BytesIO()
-        result = ean.write(buffer)
-        return result
+        ean.write(buffer)
+        self.barcode_image.save(f'{self.company}_{self.owner}_barcode.png', File(buffer), save=False)
+        return super().save(*args, **kwargs)
 
+    class Manifest(models.Model):
+        pass
