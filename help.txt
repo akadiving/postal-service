@@ -1,0 +1,4 @@
+* python manage.py cleanup_unused_media --noinput:
+    Command will remove files without any confirmation from the user. 
+    Useful for scripts.
+

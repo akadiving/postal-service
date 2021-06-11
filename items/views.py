@@ -1,17 +1,18 @@
-from django.db.models.query import QuerySet
-from django.shortcuts import render
 from datetime import datetime
 from rest_framework import permissions
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.generics import ListAPIView, CreateAPIView, \
 RetrieveUpdateAPIView, RetrieveDestroyAPIView
-from .models import Item
-from .serializers import ItemSerializer
+from rest_framework.decorators import api_view, permission_classes
+from .models import Item, Manifest
+from .serializers import ItemSerializer, ManifestSerializer
 from rest_framework.response import Response
 from django.http import HttpResponse
-from django.views.generic import View
-from .utils import render_to_pdf
-from django.views.decorators.csrf import csrf_exempt
 import json
+from django.template.loader import render_to_string
+from xhtml2pdf import pisa
+from django.http import JsonResponse
+from django.db.models import Count
 # Create your views here.
 
 class IsOwnerOrReadOnly(permissions.BasePermission):
@@ -32,7 +33,7 @@ class IsOwnerOrReadOnly(permissions.BasePermission):
         return obj.owner == request.user
 
 class ItemListView(ListAPIView,IsOwnerOrReadOnly):
-    permission_classes = [IsOwnerOrReadOnly]
+    permission_classes = [IsOwnerOrReadOnly, IsAuthenticated]
     queryset = Item.objects.all()
     serializer_class = ItemSerializer
 
@@ -44,7 +45,6 @@ class ItemListView(ListAPIView,IsOwnerOrReadOnly):
             return None
         else:
             return self.queryset.filter(owner=owner)
-
 
 class AddItemView(CreateAPIView,IsOwnerOrReadOnly):
     queryset = Item.objects.all()
@@ -81,22 +81,73 @@ class DeleteItemView(RetrieveDestroyAPIView,IsOwnerOrReadOnly):
         else:
             return self.queryset.filter(owner=owner)
 
-@csrf_exempt
+@api_view(['GET','POST'])
+@permission_classes((IsAuthenticated,IsOwnerOrReadOnly))
 def GeneratePdf(request, pk):
-    if not request.user.is_authenticated:
-        return HttpResponse('You need to authenticate')
-    elif request.user.is_anonymous:
-        return HttpResponse('You are not allowed to visit this page')
-    elif not request.method == "POST":
-        return HttpResponse("Only POST method allowed")
+    # Check if user is authenticated.
+    if request.user.is_anonymous:
+        message = {'message': 'You are not allowed to visit this page'}
+        return JsonResponse(message, safe=False)
 
     obj = Item.objects.get(id=pk)
     data = {
         'today': datetime.now().strftime("%d-%m-%Y %H:%M:%S"),
         'customer': obj,
     }
-    pdf = render_to_pdf('pdf/barcode_image.html', data)
-    return HttpResponse(pdf, content_type='application/pdf')
     
+    template_path = 'pdf/barcode_image.html'
+    response = HttpResponse(content_type='application/pdf')
+    html = render_to_string(template_path, data)
 
+    pisaStatus = pisa.CreatePDF(html, dest=response)
 
+    return response
+  
+class ManifestListView(ListAPIView,IsOwnerOrReadOnly):
+    permission_classes = [IsOwnerOrReadOnly]
+    queryset = Manifest.objects.annotate(total_items=Count('item'))
+    serializer_class = ManifestSerializer
+
+    def get_queryset(self):
+        owner = self.request.user
+        if owner.is_superuser:
+            return self.queryset.all()
+        elif owner.is_anonymous:
+            return None
+        else:
+            return self.queryset.filter(owner=owner)
+
+class AddManifestView(CreateAPIView,IsOwnerOrReadOnly):
+    queryset = Manifest.objects.all()
+    serializer_class = ManifestSerializer
+
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
+
+class UpdateManifestView(RetrieveUpdateAPIView,IsOwnerOrReadOnly):
+    permission_classes = [IsOwnerOrReadOnly]
+    queryset = Manifest.objects.all()
+    serializer_class = ManifestSerializer
+
+    def get_queryset(self):
+        owner = self.request.user
+        if owner.is_superuser:
+            return self.queryset.all()
+        elif owner.is_anonymous:
+            return None
+        else:
+            return self.queryset.filter(owner=owner)
+
+class DeleteManifestView(RetrieveDestroyAPIView,IsOwnerOrReadOnly):
+    permission_classes = [IsOwnerOrReadOnly]
+    queryset = Manifest.objects.all()
+    serializer_class = ManifestSerializer
+
+    def get_queryset(self):
+        owner = self.request.user
+        if owner.is_superuser:
+            return self.queryset.all()
+        elif owner.is_anonymous:
+            return None
+        else:
+            return self.queryset.filter(owner=owner)
