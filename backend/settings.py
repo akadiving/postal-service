@@ -43,15 +43,16 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'corsheaders',
-    'django_cleanup.apps.CleanupConfig', #cleans up unused media files
-    'django_unused_media', #cleans up unused media files
-    'djmoney',
+    'django_cleanup.apps.CleanupConfig',  # cleans up unused media files
+    'django_unused_media',  # cleans up unused media files
     'rest_framework',
+    'django_filters',
+
+    'rest_framework_simplejwt.token_blacklist',
     'authentication',
     'items',
-    'rest_framework_simplejwt.token_blacklist',
 
-    #swagger
+    # swagger
     'drf_yasg',
 ]
 
@@ -148,7 +149,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'authentication.User'
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=10),
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=2),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=10),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
@@ -169,16 +170,19 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly'
     ],
+
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.SessionAuthentication',
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ]
+    ],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
+    'PAGE_SIZE': 20
 }
 
 # SWAGGER SETTINGS
 SWAGGER_SETTINGS = {
-    'SECURITY_DEFINITIONS':{
-        'Bearer':{
+    'SECURITY_DEFINITIONS': {
+        'Bearer': {
             'type': 'apiKey',
             'name': 'Authorization',
             'in': 'header'
