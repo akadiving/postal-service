@@ -36,7 +36,7 @@ schema_view = get_schema_view(
         default_version='v1',
         description="Test description",
         terms_of_service="https://www.google.com/policies/terms/",
-        contact=openapi.Contact(email="contact@snippets.local"),
+        contact=openapi.Contact(email="akoivanishvili6@gmail.com"),
         license=openapi.License(name="BSD License"),
     ),
     public=True,
@@ -52,15 +52,43 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta:
         model = User
-        fields = ['username', 'email', 'is_staff', 'full_name']
+        fields = ['username', 'email', 'is_staff', 'full_name', 'company_name']
 
 # ViewSets define the view behavior.
 
 
+class IsSuperUser(permissions.BasePermission):
+
+    def has_permission(self, request, view):
+        return request.user and request.user.is_superuser
+
+
+class IsOwner(permissions.BasePermission):
+
+    def has_object_permission(self, request, view, obj):
+        if request.user:
+            if request.user.is_superuser:
+                return True
+        else:
+            return False
+
+
 class UserViewSet(viewsets.ModelViewSet):
-    permission_classes = [permissions.IsAdminUser]
     queryset = User.objects.all()
     serializer_class = UserSerializer
+
+    def get_permissions(self):
+        if self.action == 'list':
+            self.permission_classes = [IsSuperUser, ]
+        elif self.action == 'retrieve':
+            self.permission_classes = [IsOwner]
+        return super(self.__class__, self).get_permissions()
+
+    def get_object(self):
+        if self.kwargs['pk'] == 'me':
+            return self.request.user
+        else:
+            return super().get_object()
 
 
 # Routers provide an easy way of automatically determining the URL conf.

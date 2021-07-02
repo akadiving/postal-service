@@ -1,13 +1,11 @@
 from datetime import datetime
-from functools import partial
+import requests
 from django.db.models import Q
-from django.core.exceptions import ValidationError
 from rest_framework import permissions, filters, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.generics import ListAPIView, CreateAPIView, RetrieveAPIView, \
     RetrieveUpdateAPIView, RetrieveDestroyAPIView
-
-from django.forms.models import model_to_dict
+from .utils import generate_zpl
 from rest_framework.views import APIView
 from rest_framework.decorators import api_view, permission_classes
 from .models import Item, Manifest
@@ -15,12 +13,9 @@ from .serializers import ItemSerializer, ManifestSerializer
 from rest_framework.response import Response
 from django.http import HttpResponse
 import json
-from django.template.loader import render_to_string
-from xhtml2pdf import pisa
 from django.http import JsonResponse
 from django.db.models import Count
 import xlwt
-from rest_framework.exceptions import APIException
 # Create your views here.
 
 
@@ -89,7 +84,8 @@ class AddItemView(CreateAPIView, IsOwnerOrReadOnly):
     serializer_class = ItemSerializer
 
     def perform_create(self, serializer):
-        serializer.save(owner=self.request.user)
+        serializer.save(owner=self.request.user,
+                        company=self.request.user.company_name)
 
 
 class UpdateItemView(RetrieveUpdateAPIView, IsOwnerOrReadOnly):
@@ -122,6 +118,7 @@ class DeleteItemView(RetrieveDestroyAPIView, IsOwnerOrReadOnly):
             return self.queryset.filter(owner=owner)
 
 
+'''
 @api_view(['GET', 'POST'])
 @permission_classes((IsAuthenticated, IsOwnerOrReadOnly))
 def GeneratePdf(request, pk):
@@ -134,6 +131,7 @@ def GeneratePdf(request, pk):
     data = {
         'today': datetime.now().strftime("%d-%m-%Y %H:%M:%S"),
         'customer': obj,
+        'weight': obj.weight/100
     }
 
     template_path = 'pdf/barcode_image.html'
@@ -143,6 +141,53 @@ def GeneratePdf(request, pk):
     pisaStatus = pisa.CreatePDF(html, dest=response)
 
     return response
+
+'''
+
+
+@api_view(['GET', 'POST'])
+@permission_classes((IsAuthenticated, IsOwnerOrReadOnly))
+def GeneratePdf(request, pk):
+    '''
+        This function takes ID of item as an argument and generates invoice
+        which is a conversion of zpl command to a PDF file.
+
+        It also utilizes third party API to make this conversion possible + a request library
+    '''
+    # Check if user is authenticated.
+    if request.user.is_anonymous:
+        message = {'message': 'You are not allowed to visit this page'}
+        return JsonResponse(message, safe=False)
+
+    # get an object with id
+    obj = Item.objects.get(id=pk)
+
+    # take an object values do generate variables in pdf
+    data = [str(obj.barcode), str(obj.get_sender_full_name()),
+            str(obj.sender_city), str(obj.weight),
+            str(obj.get_receiver_full_name()), str(obj.receiver_number),
+            str(obj.receiver_city), datetime.now().strftime(
+                "%d-%m-%Y %H:%M:%S"),
+            str(obj.owner.company_name)
+            ]
+
+    # insert variables in zpl command (check utils.py to find funciton bellow)
+    zpl = generate_zpl(*data)
+    url = 'http://api.labelary.com/v1/printers/8dpmm/labels/4x6/0/'
+    files = {'file': zpl}
+    # omit this line to get PNG images back
+    headers = {'Accept': 'application/pdf'}
+    response = requests.post(url, headers=headers, files=files, stream=True)
+
+    if response.status_code == 200:
+        response.raw.decode_content = True
+        # convert response to a readable stream
+        response = HttpResponse(
+            content=response, content_type=response.headers['Content-Type'])
+        return response
+    else:
+        print('Error: ' + response.text)
+        return response
 
 
 @api_view(['GET', 'POST', 'PATCH'])
@@ -204,8 +249,13 @@ def export_excel(request, pk):
     font_style = xlwt.XFStyle()
     font_style.font.bold = True
 
-    columns = ['id', 'ავტორი', 'დრო', 'გამგზავნი ქალაქი', 'მიმღები ქალაქი',
-               'მანიფესტის კოდი', 'CMR კოდი', 'მანქანის ნომერი', ]
+    columns = ['გზ.ნომერი', 'პირადი ნომერი', 'სახელი', 'გვარი', 'ტელეფონი',
+               'მისამართი', 'ქვეყანის კოდი', 'წონა', 'გზ. ტიპი', 'დაბ.ტიპი', 'რეგ.თარიღი',
+               'საწყობში შემოტანის თარიღი', 'დოკუმენტის ნომერი', 'ტრანსპორტირების ხარჯები 1',
+               'ტრანსპორტირების ხარჯები 1-ის ვალუტა', 'ტრანსპორტირების ხარჯები  2',
+               'ტრანსპორტირების ხარჯები 2-ის ვალუტა', 'ტრანსპორტირების სხვა ხარჯები',
+               'ტრანსპორტირების სხვა ხარჯების ვალუტა', 'მაღაზიის სახელი', 'შენიშვნა' 'რეისის ნომერი',
+               'დაბრუნებული']
 
     for col_num in range(len(columns)):
         ws.write(row_num, col_num, columns[col_num], font_style)

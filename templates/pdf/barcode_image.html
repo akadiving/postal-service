@@ -1,4 +1,4 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+
 <html>
     <head>
         <title>Title</title>
@@ -37,18 +37,20 @@
         </style>
     </head>
     <body>
-        <div class='wrapper'>
-            <div class='header'>
-                <p class='title'>Invoice # </p>
-            </div>
+
+
         <div>
         <div class='details'>
-            Bill to: {{ customer.owner }} <br/>
-            Amount: {{ customer.price }} <br/>
+            Sender: {{ customer.sender_name }} <br/>
+            Receiver: {{ customer.receiver_name }} <br/>
+            Receiver city: {{ customer.receiver_city }} <br/>
+            Company: {{ customer.owner.company_name }} <br/>
+            Amount: {{ customer.price }} {{ customer.currency }} <br/>
+            weight: {{ weight}} kg <br/>
             Date: {{ today }}
             <hr class='hrItem' />
             <img src={{ customer.get_barcode_image }}>
         </div>
-    </div>
+
     </body>
 </html>

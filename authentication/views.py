@@ -16,27 +16,11 @@ from rest_framework.permissions import AllowAny
 User = get_user_model()
 # Create your views here.
 
-class IsOwnerOrReadOnly(permissions.BasePermission):
-    """
-    Object-level permission to only allow owners of an object to edit it.
-    Assumes the model instance has an `owner` attribute.
-    """
-
-    def has_object_permission(self, request, view, obj):
-        # Read permissions are allowed to any request,
-        # so we'll always allow GET, HEAD or OPTIONS requests.
-        if request.method in permissions.SAFE_METHODS:
-            return True
-        elif request.user.is_superuser:
-            return True
-
-        # Instance must have an attribute named `owner`.
-        return obj.owner == request.user
 
 class RegisterUserView(APIView):
     permission_classes = [permissions.AllowAny]
     serializer_class = RegisterSerializer
-    
+
     def post(self, request, format='json'):
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
@@ -45,7 +29,8 @@ class RegisterUserView(APIView):
                 json = serializer.data
                 return Response(json, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
+
+
 class BlacklistTokenUpdateView(APIView):
     permission_classes = [AllowAny]
     authentication_classes = ()

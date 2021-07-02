@@ -2,3 +2,6 @@
     Command will remove files without any confirmation from the user. 
     Useful for scripts.
 
+* docker commands
+    docker build --tag django-backend .
+    docker run --publish 8000:8000 django-backend
