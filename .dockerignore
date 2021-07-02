@@ -1,3 +1,2 @@
-.venv
-frontend
-.dockerignore
+venv
+db.sqlite3
