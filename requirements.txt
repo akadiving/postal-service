@@ -15,11 +15,13 @@ coreschema==0.0.4
 cryptography==3.4.7
 defusedxml==0.7.1
 diff-match-patch==20200713
+dj-database-url==0.5.0
 Django==3.2.3
 django-cleanup==5.2.0
 django-cors-headers==3.7.0
 django-environ==0.4.5
 django-filter==2.4.0
+django-heroku==0.3.1
 django-import-export==2.5.0
 django-money==2.0
 django-seed==0.2.2
@@ -53,6 +55,7 @@ odfpy==1.4.1
 openpyxl==3.0.7
 packaging==20.9
 Pillow==8.2.0
+psycopg2==2.9.1
 psycopg2-binary==2.9.1
 py-moneyed==1.2
 pycodestyle==2.7.0
