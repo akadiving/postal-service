@@ -29,7 +29,8 @@ SECRET_KEY = "django-insecure-9$&0)2b5o=@^^)n@q5u3k3_(i1rj1&9(b(dkna7w5n_s%()s+l
 DEBUG = True
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1',
-                 'postal-service-test.herokuapp.com']
+                 'postal-service-test.herokuapp.com',
+                 'postal-service-frontend.herokuapp.com']
 
 
 # Application definition
