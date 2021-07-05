@@ -1,6 +1,6 @@
 self.__precacheManifest = (self.__precacheManifest || []).concat([
   {
-    "revision": "d18a722f1a6f004f23cc",
+    "revision": "32c1f40d204f6f8f265f",
     "url": "/css/app.73f854ca.css"
   },
   {
@@ -16,12 +16,12 @@ self.__precacheManifest = (self.__precacheManifest || []).concat([
     "url": "/img/package-box-svgrepo-com.f965f4d0.svg"
   },
   {
-    "revision": "3367626c87662c75aa529c6c5772cbfc",
+    "revision": "071c020931a2d6bd6209f797ea7f13f6",
     "url": "/index.html"
   },
   {
-    "revision": "d18a722f1a6f004f23cc",
-    "url": "/js/app.56a7fe1c.js"
+    "revision": "32c1f40d204f6f8f265f",
+    "url": "/js/app.ed8f7724.js"
   },
   {
     "revision": "233b79b0d982ded576cf",
