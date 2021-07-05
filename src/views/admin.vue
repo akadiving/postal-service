@@ -294,7 +294,7 @@ export default {
     //get current user
     getUser(){
       let accessToken = JSON.parse(sessionStorage.getItem('access'))
-      const baseURL = `http://127.0.0.1:8000/users/me/`;
+      const baseURL = `https://postal-service-test.herokuapp.com/users/me/`;
       const options = {
           method: 'GET',
           baseURL: baseURL,
