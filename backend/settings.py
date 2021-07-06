@@ -34,7 +34,8 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1',
                  'postal-service-test.herokuapp.com',
-                 'postal-service-frontend.herokuapp.com']
+                 'postal-service-frontend.herokuapp.com',
+                 'myposta.online']
 
 
 # Application definition
