@@ -9,7 +9,7 @@ from import_export.admin import ImportExportModelAdmin
 User = get_user_model()
 
 
-class UserAdminConfig(ImportExportModelAdmin):
+class UserAdminConfig(UserAdmin):
     model = User
     search_fields = ('email', 'username', 'first_name',
                      'last_name', 'company_name')
@@ -20,7 +20,7 @@ class UserAdminConfig(ImportExportModelAdmin):
                     'last_name', 'is_active', 'is_staff', 'company_name')
     fieldsets = (
         (None, {'fields': ('email', 'username',
-         'first_name', 'last_name', 'company_name')}),
+         'first_name', 'last_name', 'company_name', 'password',)}),
         ('Permissions', {'fields': ('is_staff',
          'is_active', 'groups', 'user_permissions')}),
         ('Personal', {'fields': ('about',)}),

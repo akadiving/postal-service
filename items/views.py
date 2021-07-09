@@ -36,6 +36,11 @@ class IsOwnerOrReadOnly(permissions.BasePermission):
         # Instance must have an attribute named `owner`.
         return obj.owner == request.user
 
+    def has_permission(self, request, view):
+        if request.user.groups.filter(name='Company').exists() or request.user.is_superuser:
+            return True
+        return False
+
 
 class IsOwnerFilterBackend(filters.BaseFilterBackend):
     """
@@ -46,8 +51,8 @@ class IsOwnerFilterBackend(filters.BaseFilterBackend):
         return queryset.filter(owner=request.user)
 
 
-class IteamSearchView(ListAPIView):
-    permission_classes = [IsAuthenticated]
+class IteamSearchView(ListAPIView, IsOwnerOrReadOnly):
+    permission_classes = [IsOwnerOrReadOnly, IsAuthenticated]
     queryset = Item.objects.all()
     serializer_class = ItemSerializer
     filter_backends = [filters.SearchFilter]
@@ -279,7 +284,7 @@ def export_excel(request, pk):
 
 
 class ManifestListView(ListAPIView, IsOwnerOrReadOnly):
-    permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]
+    permission_classes = [IsOwnerOrReadOnly, IsAuthenticated]
     queryset = Manifest.objects.annotate(total_items=Count('item'))
     serializer_class = ManifestSerializer
 
