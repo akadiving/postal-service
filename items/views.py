@@ -249,28 +249,24 @@ def export_excel(request, pk):
         datetime.now().strftime("%d-%m-%Y %H:%M:%S") + '.xls'
 
     wb = xlwt.Workbook(encoding='utf-8')
-    ws = wb.add_sheet('მანიფესტი')
+    ws = wb.add_sheet('ამანათები')
     row_num = 0
     font_style = xlwt.XFStyle()
     font_style.font.bold = True
 
-    columns = ['გზ.ნომერი', 'პირადი ნომერი', 'სახელი', 'გვარი', 'ტელეფონი',
-               'მისამართი', 'ქვეყანის კოდი', 'წონა', 'გზ. ტიპი', 'დაბ.ტიპი', 'რეგ.თარიღი',
-               'საწყობში შემოტანის თარიღი', 'დოკუმენტის ნომერი', 'ტრანსპორტირების ხარჯები 1',
-               'ტრანსპორტირების ხარჯები 1-ის ვალუტა', 'ტრანსპორტირების ხარჯები  2',
-               'ტრანსპორტირების ხარჯები 2-ის ვალუტა', 'ტრანსპორტირების სხვა ხარჯები',
-               'ტრანსპორტირების სხვა ხარჯების ვალუტა', 'მაღაზიის სახელი', 'შენიშვნა' 'რეისის ნომერი',
-               'დაბრუნებული']
+    columns = ['ID', 'ბარკოდი', 'მანიფესტის კოდი', 'გამ. სახელი', 'გამ. გვარი',
+               'მიმღ. სახელი', 'მიმღ. გვარი', 'მიმღ. ქალაქი', 'მიმღების ID', 'ფასი',
+               'ვალუტა', 'წონა', 'ავტორი', 'კომპანია', 'ჩამოსულია', 'აღწერა']
 
     for col_num in range(len(columns)):
         ws.write(row_num, col_num, columns[col_num], font_style)
 
     font_style = xlwt.XFStyle()
 
-    rows = Manifest.objects.filter(id=pk).values_list('id', 'owner__username', 'created_at', 'sender_city', 'receiver_city',
-                                                      'manifest_code', 'cmr', 'car_number',)
-
-    item_rows = Item.objects.filter(manifest_number=pk).values_list()
+    rows = Item.objects.filter(owner=request.user).values_list('id', 'barcode', 'manifest_number__manifest_code', 'sender_name',
+                                                               'sender_surname', 'receiver_name', 'receiver_surname',
+                                                               'receiver_city', 'receiver_id', 'price', 'currency',
+                                                               'weight', 'owner__username', 'owner__company_name', 'arrived', 'description')
 
     for row in rows:
         row_num += 1
