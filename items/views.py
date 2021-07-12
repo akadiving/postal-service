@@ -152,7 +152,7 @@ def GeneratePdf(request, pk):
 
 @api_view(['GET', 'POST'])
 @permission_classes((IsAuthenticated, IsOwnerOrReadOnly))
-def GeneratePdf(request, pk):
+def Generate_sticker(request, pk):
     '''
         This function takes ID of item as an argument and generates invoice
         which is a conversion of zpl command to a PDF file.
@@ -238,15 +238,14 @@ def delete_multiple_items(request):
 
 @api_view(['GET', 'POST'])
 @permission_classes((IsAuthenticated, IsOwnerOrReadOnly))
-def export_excel(request, pk):
+def export_excel(request):
     # Check if user is authenticated.
     if request.user.is_anonymous:
         message = {'message': 'You are not allowed to visit this page'}
         return JsonResponse(message, safe=False)
 
-    response = HttpResponse(content_type='application/ms-excel')
-    response['Content-Disposition'] = 'attachment; filename=Manifest' + \
-        datetime.now().strftime("%d-%m-%Y %H:%M:%S") + '.xls'
+    response = HttpResponse(content_type='application/vnd.ms-excel')
+    response['Content-Disposition'] = 'attachment; filename="test.xlsx"'
 
     wb = xlwt.Workbook(encoding='utf-8')
     ws = wb.add_sheet('ამანათები')
@@ -262,11 +261,31 @@ def export_excel(request, pk):
         ws.write(row_num, col_num, columns[col_num], font_style)
 
     font_style = xlwt.XFStyle()
-
-    rows = Item.objects.filter(owner=request.user).values_list('id', 'barcode', 'manifest_number__manifest_code', 'sender_name',
-                                                               'sender_surname', 'receiver_name', 'receiver_surname',
-                                                               'receiver_city', 'receiver_id', 'price', 'currency',
-                                                               'weight', 'owner__username', 'owner__company_name', 'arrived', 'description')
+    print(request.data)
+    if len(request.data['id']) > 0 and request.user.is_superuser:
+        rows = Item.objects.filter(id__in=request.data['id']).values_list('id', 'barcode', 'manifest_number__manifest_code', 'sender_name',
+                                                                          'sender_surname', 'receiver_name', 'receiver_surname',
+                                                                          'receiver_city', 'receiver_id', 'price', 'currency',
+                                                                          'weight', 'owner__username', 'owner__company_name', 'arrived',
+                                                                          'description')
+    elif len(request.data['id']) > 0 and request.user.groups.filter(name='Company').exists():
+        rows = Item.objects.filter(id__in=request.data['id']).values_list('id', 'barcode', 'manifest_number__manifest_code', 'sender_name',
+                                                                          'sender_surname', 'receiver_name', 'receiver_surname',
+                                                                          'receiver_city', 'receiver_id', 'price', 'currency',
+                                                                          'weight', 'owner__username', 'owner__company_name',
+                                                                          'arrived', 'description')
+    elif len(request.data['id']) <= 0 and request.user.is_superuser:
+        rows = Item.objects.all().values_list('id', 'barcode', 'manifest_number__manifest_code', 'sender_name',
+                                              'sender_surname', 'receiver_name', 'receiver_surname',
+                                              'receiver_city', 'receiver_id', 'price', 'currency',
+                                              'weight', 'owner__username', 'owner__company_name',
+                                              'arrived', 'description')
+    else:
+        rows = Item.objects.filter(owner=request.user).values_list('id', 'barcode', 'manifest_number__manifest_code', 'sender_name',
+                                                                   'sender_surname', 'receiver_name', 'receiver_surname',
+                                                                   'receiver_city', 'receiver_id', 'price', 'currency',
+                                                                   'weight', 'owner__username', 'owner__company_name',
+                                                                   'arrived', 'description')
 
     for row in rows:
         row_num += 1

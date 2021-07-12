@@ -8,7 +8,9 @@ urlpatterns = [
     path('items/add/', AddItemView.as_view(), name='add-item'),
     path('items/update/<int:pk>', UpdateItemView.as_view(), name='update-item'),
     path('items/delete/<int:pk>', DeleteItemView.as_view(), name='delete-item'),
-    path('items/generate-pdf/<int:pk>', GeneratePdf, name='generate-pdf'),
+    path('items/generate_sticker/<int:pk>',
+         Generate_sticker, name='generate-sticker'),
+    path('items/export_excel/', export_excel, name='export-excel'),
     path('items/update-manifest/', change_manifest, name='update-manifest'),
     path('items/bulk-delete/', delete_multiple_items, name='bulk-delete'),
 
