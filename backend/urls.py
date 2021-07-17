@@ -28,6 +28,7 @@ from rest_framework_simplejwt.views import (
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
+from django.contrib.auth.models import Group
 
 # swagger schema view
 schema_view = get_schema_view(
@@ -46,13 +47,18 @@ schema_view = get_schema_view(
 User = get_user_model()
 # Serializers define the API representation.
 
+class GroupSerializer(serializers.ModelSerializer):    
+    class Meta:
+        model = Group
+        fields = ('name',)
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):
     full_name = serializers.CharField(source='get_full_name')
+    groups = GroupSerializer(many=False)
 
     class Meta:
         model = User
-        fields = ['username', 'email', 'is_staff', 'full_name', 'company_name']
+        fields = ['username', 'email', 'is_staff', 'full_name', 'company_name', 'groups']
 
 # ViewSets define the view behavior.
 
