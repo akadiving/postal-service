@@ -66,7 +66,7 @@ class Item(models.Model):
     receiver_city = models.CharField(max_length=200)
     receiver_address = models.CharField(max_length=200, blank=True)
     receiver_number = models.CharField(max_length=200, blank=True)
-    description = models.TextField(max_length=500, blank=True)
+    description = models.TextField(max_length=500, blank=True, default="Personal Items")
     weight = models.FloatField(blank=True)
     price = models.DecimalField(max_digits=14, decimal_places=2)
     currency = models.CharField(max_length=20, default='USD')

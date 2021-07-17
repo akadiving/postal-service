@@ -20,7 +20,7 @@ class ItemSerializer(serializers.ModelSerializer):
         allow_null=True, default=None,
         read_only=True
     )
-
+    
     class Meta:
         model = Item
         exclude = ['created_at', 'shelf_number', ]
