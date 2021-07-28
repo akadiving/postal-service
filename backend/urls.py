@@ -54,11 +54,12 @@ class GroupSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):
     full_name = serializers.CharField(source='get_full_name')
-    groups = GroupSerializer(many=False)
+    groups = GroupSerializer(many=True)
 
     class Meta:
         model = User
         fields = ['username', 'email', 'is_staff', 'full_name', 'company_name', 'groups']
+    
 
 # ViewSets define the view behavior.
 

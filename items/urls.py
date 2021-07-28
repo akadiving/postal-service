@@ -13,6 +13,7 @@ urlpatterns = [
     path('items/export_excel/', export_excel, name='export-excel'),
     path('items/update-manifest/', change_manifest, name='update-manifest'),
     path('items/bulk-delete/', delete_multiple_items, name='bulk-delete'),
+    path('items/signature/', sign_document, name='signature'),
 
     # Manifest views
     path('manifest/', ManifestListView.as_view(), name='manifest-list'),
@@ -23,5 +24,5 @@ urlpatterns = [
          UpdateManifestView.as_view(), name='update-manifest'),
     path('manifest/delete/<int:pk>',
          DeleteManifestView.as_view(), name='delete-manifest'),
-    path('manifest/export-excel/<int:pk>', export_excel, name='export-excel'),
+    path('manifest/export_excel_manifest/', export_excel_manifest, name='export-excel-manifest'),
 ]

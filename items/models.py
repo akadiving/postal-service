@@ -3,6 +3,7 @@ from django.db.models.deletion import CASCADE
 import random
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import User
+from django.db.models import Sum
 
 User = get_user_model()
 # Create your models here.
@@ -41,9 +42,7 @@ class Manifest(models.Model):
 
     class Meta:
         ordering = ('-created_at',)
-
-    def total_item(self):
-        pass
+    
 
 
 class Shelf(models.Model):
@@ -79,6 +78,7 @@ class Item(models.Model):
     shelf_number = models.ForeignKey(
         Shelf, on_delete=models.SET_NULL,
         related_name="item_shelf", null=True, default=None, blank=True)
+    signature = models.TextField(null=True, blank=True)
 
     def __str__(self):
         return f'{self.owner.username} {self.id} \

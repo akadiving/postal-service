@@ -85,6 +85,7 @@ class ItemListView(ListAPIView, IsOwnerOrReadOnly):
 
 
 class AddItemView(CreateAPIView, IsOwnerOrReadOnly):
+    permission_classes = [IsAuthenticated]
     queryset = Item.objects.all()
     serializer_class = ItemSerializer
 
@@ -228,13 +229,31 @@ def delete_multiple_items(request):
         return JsonResponse(message, safe=False)
     obj = Item.objects.filter(id__in=request.data['id'])
     obj.delete()
-    print(request.data)
     serializer = ItemSerializer(data=obj, many=True, partial=True)
     if serializer.is_valid():
         serializer.save()
         return Response(serializer.data)
     return Response(serializer.data, status=status.HTTP_200_OK)
 
+@api_view(['GET', 'POST', 'PATCH'])
+@permission_classes((IsAuthenticated, IsOwnerOrReadOnly))
+def sign_document(request):
+    # Check if user is authenticated.
+    if request.user.is_anonymous:
+        message = {'message': 'You are not allowed to visit this page'}
+        return JsonResponse(message, safe=False)
+    elif request.method != 'PATCH':
+        message = {'message': 'You can use only PATCH method'}
+        return JsonResponse(message, safe=False)
+    print(request.data)
+    obj = Item.objects.filter(id__in=request.data['id'])
+    obj.update(
+        signature=request.data['signature'], arrived=True)
+    serializer = ItemSerializer(data=obj, many=True, partial=True)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data)
+    return Response(serializer.data, status=status.HTTP_200_OK)
 
 @api_view(['GET', 'POST'])
 @permission_classes((IsAuthenticated, IsOwnerOrReadOnly))
@@ -250,18 +269,19 @@ def export_excel(request):
     wb = xlwt.Workbook(encoding='utf-8')
     ws = wb.add_sheet('ამანათები')
     row_num = 0
-    font_style = xlwt.XFStyle()
-    font_style.font.bold = True
+    font_style = xlwt.easyxf("font: bold on; align: wrap on, horiz left; borders: left thin, right thin, top thin, bottom thin;")
+    items_style = xlwt.easyxf("align: wrap on, horiz left; borders: left thin, right thin, top thin, bottom thin;")
 
     columns = ['ID', 'ბარკოდი', 'მანიფესტის კოდი', 'გამ. სახელი', 'გამ. გვარი',
                'მიმღ. სახელი', 'მიმღ. გვარი', 'მიმღ. ქალაქი', 'მიმღების ID', 'ფასი',
                'ვალუტა', 'წონა', 'ავტორი', 'კომპანია', 'ჩამოსულია', 'აღწერა']
 
     for col_num in range(len(columns)):
+        ws.col(col_num).width = int(16*260)
         ws.write(row_num, col_num, columns[col_num], font_style)
 
     font_style = xlwt.XFStyle()
-    print(request.data)
+
     if len(request.data['id']) > 0 and request.user.is_superuser:
         rows = Item.objects.filter(id__in=request.data['id']).values_list('id', 'barcode', 'manifest_number__manifest_code', 'sender_name',
                                                                           'sender_surname', 'receiver_name', 'receiver_surname',
@@ -287,16 +307,97 @@ def export_excel(request):
                                                                    'weight', 'owner__username', 'owner__company_name',
                                                                    'arrived', 'description')
 
+    ws.col(2).width = int(18*260)
+    for i in range(9, 16):
+        ws.col(i).width = int(13*260)
+
     for row in rows:
         row_num += 1
 
         for col_num in range(len(row)):
-            ws.write(row_num, col_num, str(row[col_num]), font_style)
+            ws.write(row_num, col_num, str(row[col_num]), items_style)
 
     wb.save(response)
 
     return response
 
+@api_view(['GET', 'POST'])
+@permission_classes((IsAuthenticated, IsOwnerOrReadOnly))
+def export_excel_manifest(request):
+    # Check if user is authenticated.
+    if request.user.is_anonymous:
+        message = {'message': 'You are not allowed to visit this page'}
+        return JsonResponse(message, safe=False)
+
+    response = HttpResponse(content_type='application/vnd.ms-excel')
+    response['Content-Disposition'] = 'attachment; filename="test.xlsx"'
+
+    #create a workbook and set the style of data input
+    wb = xlwt.Workbook(encoding='utf-8')
+    ws = wb.add_sheet('მანიფესტი',)
+    row_num = 0
+    document_cols = 0
+    style = xlwt.easyxf("font: bold on; align: wrap on, horiz center; borders: left thin, right thin, top thin, bottom thin;")
+    items_style = xlwt.easyxf("align: wrap on, horiz left; borders: left thin, right thin, top thin, bottom thin;")
+
+    #columns for manifest
+    manifest_columns = ['COMPANY:', 'DATE:', 'SENDER CITY:', 'RECEIVER CITY:', 
+                        'MANIFEST NUMBER:', 'CMR:', 'CAR REGISTRATION No:', 'DRIVER NAME:',
+                        'DRIVER SURNAME:']
+
+    #columns for items
+    columns = ['ID', 'ბარკოდი', 'მანიფესტის კოდი', 'გამ. სახელი', 'გამ. გვარი',
+               'მიმღ. სახელი', 'მიმღ. გვარი', 'მიმღ. ქალაქი', 'მიმღების ID', 'ფასი',
+               'ვალუტა', 'წონა', 'ავტორი', 'კომპანია', 'ჩამოსულია', 'აღწერა']
+
+    #manifest rows
+    rows_manifest = Manifest.objects.filter(id=request.data['manifest_id']).values_list('owner__company_name', 'created_at',
+    'sender_city', 'receiver_city', 'manifest_code', 'cmr', 'car_number', 'driver_name', 'driver_surname')
+    
+
+    #add the value of manifest in excel
+    for col_num in range(len(manifest_columns)):
+        ws.col(col_num).width = int(16*260)
+        ws.write_merge(row_num, row_num, document_cols, 1, manifest_columns[col_num], style)
+        for row in rows_manifest:
+            ws.write_merge(row_num, row_num, 2, 3, str(row[col_num]), style)
+            row_num += 1
+
+    ws.write_merge(row_num, row_num, document_cols, 1, 'TOTAL ITEMS', style)
+    ws.write_merge(row_num, row_num, 2, 3, str(request.data['total_items']), style)
+    row_num +=1
+    ws.write_merge(row_num, row_num, document_cols, 1, 'TOTAL WEIGHT', style)
+    ws.write_merge(row_num, row_num, 2, 3, str(request.data['total_weight']) + ' KG', style)
+
+
+    row_num +=1
+    #set the remaining col width
+    ws.col(2).width = int(18*260)
+    ws.col(8).width = int(16*260)
+
+    row_num +=1
+    #add item columns
+    for col_num in range(len(columns)):
+        ws.write_merge(row_num, row_num+1, col_num, col_num, columns[col_num], style)
+
+    row_num +=1
+    #query item values that are filtered by manifest id
+    rows = Item.objects.filter(manifest_number=request.data['manifest_id']).values_list('id', 'barcode', 'manifest_number__manifest_code', 'sender_name',
+                                                                        'sender_surname', 'receiver_name', 'receiver_surname',
+                                                                        'receiver_city', 'receiver_id', 'price', 'currency',
+                                                                        'weight', 'owner__username', 'owner__company_name', 'arrived',
+                                                                        'description')
+    
+    #add item row values
+    for row in rows:
+        row_num += 1
+
+        for col_num in range(len(row)):
+            ws.write(row_num, col_num, str(row[col_num]), items_style)
+
+    wb.save(response)
+
+    return response
 
 class ManifestListView(ListAPIView, IsOwnerOrReadOnly):
     permission_classes = [IsOwnerOrReadOnly, IsAuthenticated]
@@ -338,6 +439,7 @@ class ManifestDetailView(IsOwnerOrReadOnly, RetrieveAPIView):
 
 
 class AddManifestView(CreateAPIView, IsOwnerOrReadOnly):
+    permission_classes = [IsAuthenticated]
     queryset = Manifest.objects.all()
     serializer_class = ManifestSerializer
 

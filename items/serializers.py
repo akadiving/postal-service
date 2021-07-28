@@ -24,7 +24,7 @@ class ItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = Item
         exclude = ['created_at', 'shelf_number', ]
-        read_only_fields = ['barcode', 'owner', 'company', 'manifest_code']
+        read_only_fields = ['barcode', 'owner', 'company', 'manifest_code', 'signature']
 
     def create(self, validated_data):
         return Item.objects.create(**validated_data)
