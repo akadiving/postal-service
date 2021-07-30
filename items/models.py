@@ -79,6 +79,7 @@ class Item(models.Model):
         Shelf, on_delete=models.SET_NULL,
         related_name="item_shelf", null=True, default=None, blank=True)
     signature = models.TextField(null=True, blank=True)
+    delivered = models.BooleanField(null=True, default=False)
 
     def __str__(self):
         return f'{self.owner.username} {self.id} \

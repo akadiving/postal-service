@@ -68,6 +68,22 @@ class IteamSearchView(ListAPIView, IsOwnerOrReadOnly):
         else:
             return self.queryset.filter(owner=owner)
 
+class IteamSearchDeliveredView(ListAPIView, IsOwnerOrReadOnly):
+    permission_classes = [IsOwnerOrReadOnly, IsAuthenticated]
+    queryset = Item.objects.all()
+    serializer_class = ItemSerializer
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['^barcode', '^owner__username',
+                     '^sender_name', '^receiver_id']
+
+    def get_queryset(self):
+        owner = self.request.user
+        if owner.is_superuser:
+            return self.queryset.filter(delivered=True)
+        elif owner.is_anonymous:
+            return None
+        else:
+            return self.queryset.filter(owner=owner, delivered=True)
 
 class ItemListView(ListAPIView, IsOwnerOrReadOnly):
     permission_classes = [IsOwnerOrReadOnly, IsAuthenticated]
@@ -245,10 +261,9 @@ def sign_document(request):
     elif request.method != 'PATCH':
         message = {'message': 'You can use only PATCH method'}
         return JsonResponse(message, safe=False)
-    print(request.data)
     obj = Item.objects.filter(id__in=request.data['id'])
     obj.update(
-        signature=request.data['signature'], arrived=True)
+        signature=request.data['signature'], arrived=True, delivered=True)
     serializer = ItemSerializer(data=obj, many=True, partial=True)
     if serializer.is_valid():
         serializer.save()

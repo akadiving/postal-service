@@ -5,6 +5,7 @@ urlpatterns = [
     # Item views
     path('items/', ItemListView.as_view(), name='item-list'),
     path('items/search/', IteamSearchView.as_view(), name='item-search'),
+    path('items/delivered/search/', IteamSearchDeliveredView.as_view(), name='item-delivered'),
     path('items/add/', AddItemView.as_view(), name='add-item'),
     path('items/update/<int:pk>', UpdateItemView.as_view(), name='update-item'),
     path('items/delete/<int:pk>', DeleteItemView.as_view(), name='delete-item'),
