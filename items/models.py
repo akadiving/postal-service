@@ -3,7 +3,7 @@ from django.db.models.deletion import CASCADE
 import random
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import User
-from django.db.models import Sum
+from django.core.files import File
 
 User = get_user_model()
 # Create your models here.
@@ -78,7 +78,7 @@ class Item(models.Model):
     shelf_number = models.ForeignKey(
         Shelf, on_delete=models.SET_NULL,
         related_name="item_shelf", null=True, default=None, blank=True)
-    signature = models.TextField(null=True, blank=True)
+    signature = models.ImageField(upload_to="signatures/", blank=True, null=True)
     delivered = models.BooleanField(null=True, default=False)
 
     def __str__(self):
@@ -94,3 +94,8 @@ class Item(models.Model):
 
     def get_sender_full_name(self):
         return f'{self.sender_name} {self.sender_surname}'
+
+    def get_signature(self):
+        if self.signature:
+            return 'http://127.0.0.1:8000' + self.signature.url
+        return ''

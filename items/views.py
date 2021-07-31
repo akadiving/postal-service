@@ -1,21 +1,21 @@
 from datetime import datetime
 import requests
-from django.db.models import Q
 from rest_framework import permissions, filters, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.generics import ListAPIView, CreateAPIView, RetrieveAPIView, \
     RetrieveUpdateAPIView, RetrieveDestroyAPIView
 from .utils import generate_zpl
-from rest_framework.views import APIView
 from rest_framework.decorators import api_view, permission_classes
 from .models import Item, Manifest
 from .serializers import ItemSerializer, ManifestSerializer
 from rest_framework.response import Response
 from django.http import HttpResponse
-import json
 from django.http import JsonResponse
 from django.db.models import Count
 import xlwt
+import uuid
+from base64 import b64decode
+from django.core.files.base import ContentFile   
 # Create your views here.
 
 
@@ -59,6 +59,7 @@ class IteamSearchView(ListAPIView, IsOwnerOrReadOnly):
     search_fields = ['^barcode', '^owner__username',
                      '^sender_name', '^receiver_id']
 
+
     def get_queryset(self):
         owner = self.request.user
         if owner.is_superuser:
@@ -67,6 +68,7 @@ class IteamSearchView(ListAPIView, IsOwnerOrReadOnly):
             return None
         else:
             return self.queryset.filter(owner=owner)
+
 
 class IteamSearchDeliveredView(ListAPIView, IsOwnerOrReadOnly):
     permission_classes = [IsOwnerOrReadOnly, IsAuthenticated]
@@ -89,6 +91,7 @@ class ItemListView(ListAPIView, IsOwnerOrReadOnly):
     permission_classes = [IsOwnerOrReadOnly, IsAuthenticated]
     queryset = Item.objects.all()
     serializer_class = ItemSerializer
+    pagination_class = None
 
     def get_queryset(self):
         owner = self.request.user
@@ -305,6 +308,13 @@ def export_excel(request):
                                                                           'description')
     elif len(request.data['id']) > 0 and request.user.groups.filter(name='Company').exists():
         rows = Item.objects.filter(id__in=request.data['id']).values_list('id', 'barcode', 'manifest_number__manifest_code', 'sender_name',
+                                                                          'sender_surname', 'receiver_name', 'receiver_surname',
+                                                                          'receiver_city', 'receiver_id', 'price', 'currency',
+                                                                          'weight', 'owner__username', 'owner__company_name',
+                                                                          'arrived', 'description')
+
+    elif len(request.data['id']) <= 0 and request.user.groups.filter(name='Company').exists():
+        rows = Item.objects.filter(owner=request.user).values_list('id', 'barcode', 'manifest_number__manifest_code', 'sender_name',
                                                                           'sender_surname', 'receiver_name', 'receiver_surname',
                                                                           'receiver_city', 'receiver_id', 'price', 'currency',
                                                                           'weight', 'owner__username', 'owner__company_name',
