@@ -13,6 +13,7 @@ from django.http import HttpResponse
 from django.http import JsonResponse
 from django.db.models import Count
 import xlwt
+import json
 import uuid
 from base64 import b64decode
 from django.core.files.base import ContentFile   
@@ -77,6 +78,7 @@ class IteamSearchDeliveredView(ListAPIView, IsOwnerOrReadOnly):
     filter_backends = [filters.SearchFilter]
     search_fields = ['^barcode', '^owner__username',
                      '^sender_name', '^receiver_id']
+    pagination_class = None
 
     def get_queryset(self):
         owner = self.request.user
@@ -254,6 +256,43 @@ def delete_multiple_items(request):
         return Response(serializer.data)
     return Response(serializer.data, status=status.HTTP_200_OK)
 
+def decode_base64_file(data):
+
+    def get_file_extension(file_name, decoded_file):
+        import imghdr
+
+        extension = imghdr.what(file_name, decoded_file)
+        extension = "jpg" if extension == "jpeg" else extension
+
+        return extension
+
+    from django.core.files.base import ContentFile
+    import base64
+    import six
+    import uuid
+
+    # Check if this is a base64 string
+    if isinstance(data, six.string_types):
+        # Check if the base64 string is in the "data:" format
+        if 'data:' in data and ';base64,' in data:
+            # Break out the header from the base64 content
+            header, data = data.split(';base64,')
+
+        # Try to decode the file. Return validation error if it fails.
+        try:
+            decoded_file = base64.b64decode(data)
+        except TypeError:
+            TypeError('invalid_image')
+
+        # Generate file name:
+        file_name = str(uuid.uuid4())[:12] # 12 characters are more than enough.
+        # Get the file name extension:
+        file_extension = get_file_extension(file_name, decoded_file)
+
+        complete_file_name = "%s.%s" % (file_name, file_extension, )
+
+        return ContentFile(decoded_file, name=complete_file_name)
+
 @api_view(['GET', 'POST', 'PATCH'])
 @permission_classes((IsAuthenticated, IsOwnerOrReadOnly))
 def sign_document(request):
@@ -264,9 +303,12 @@ def sign_document(request):
     elif request.method != 'PATCH':
         message = {'message': 'You can use only PATCH method'}
         return JsonResponse(message, safe=False)
-    obj = Item.objects.filter(id__in=request.data['id'])
-    obj.update(
-        signature=request.data['signature'], arrived=True, delivered=True)
+    obj = Item.objects.filter(id=request.data['id'])
+    obj1 = Item.objects.get(id=request.data['id'])
+    image_base64 = request.data['signature']
+    obj1.signature = decode_base64_file(image_base64)
+    obj1.save()
+    obj.update(arrived=True, delivered=True)
     serializer = ItemSerializer(data=obj, many=True, partial=True)
     if serializer.is_valid():
         serializer.save()
@@ -291,7 +333,7 @@ def export_excel(request):
     items_style = xlwt.easyxf("align: wrap on, horiz left; borders: left thin, right thin, top thin, bottom thin;")
 
     columns = ['ID', 'ბარკოდი', 'მანიფესტის კოდი', 'გამ. სახელი', 'გამ. გვარი',
-               'მიმღ. სახელი', 'მიმღ. გვარი', 'მიმღ. ქალაქი', 'მიმღების ID', 'ფასი',
+               'მიმღ. სახელი', 'მიმღ. გვარი', 'მიმღ. ქალაქი', 'მიმღების ID', 'ტელ. ნომერი' 'ფასი',
                'ვალუტა', 'წონა', 'ავტორი', 'კომპანია', 'ჩამოსულია', 'აღწერა']
 
     for col_num in range(len(columns)):
@@ -300,35 +342,38 @@ def export_excel(request):
 
     font_style = xlwt.XFStyle()
 
+
     if len(request.data['id']) > 0 and request.user.is_superuser:
         rows = Item.objects.filter(id__in=request.data['id']).values_list('id', 'barcode', 'manifest_number__manifest_code', 'sender_name',
                                                                           'sender_surname', 'receiver_name', 'receiver_surname',
-                                                                          'receiver_city', 'receiver_id', 'price', 'currency',
+                                                                          'receiver_city', 'receiver_id', 'receiver_number', 'price', 'currency',
                                                                           'weight', 'owner__username', 'owner__company_name', 'arrived',
                                                                           'description')
     elif len(request.data['id']) > 0 and request.user.groups.filter(name='Company').exists():
         rows = Item.objects.filter(id__in=request.data['id']).values_list('id', 'barcode', 'manifest_number__manifest_code', 'sender_name',
                                                                           'sender_surname', 'receiver_name', 'receiver_surname',
-                                                                          'receiver_city', 'receiver_id', 'price', 'currency',
+                                                                          'receiver_city', 'receiver_id', 'receiver_number', 'price', 'currency',
                                                                           'weight', 'owner__username', 'owner__company_name',
                                                                           'arrived', 'description')
+
+    elif len(request.data['id']) <= 0 and request.user.is_superuser and request.user.groups.filter(name='Company').exists():
+        rows = Item.objects.all().values_list('id', 'barcode', 'manifest_number__manifest_code', 'sender_name',
+                                              'sender_surname', 'receiver_name', 'receiver_surname',
+                                              'receiver_city', 'receiver_id', 'receiver_number','price', 'currency',
+                                              'weight', 'owner__username', 'owner__company_name',
+                                              'arrived', 'description')
 
     elif len(request.data['id']) <= 0 and request.user.groups.filter(name='Company').exists():
         rows = Item.objects.filter(owner=request.user).values_list('id', 'barcode', 'manifest_number__manifest_code', 'sender_name',
                                                                           'sender_surname', 'receiver_name', 'receiver_surname',
-                                                                          'receiver_city', 'receiver_id', 'price', 'currency',
+                                                                          'receiver_city', 'receiver_id', 'receiver_number', 'price', 'currency',
                                                                           'weight', 'owner__username', 'owner__company_name',
                                                                           'arrived', 'description')
-    elif len(request.data['id']) <= 0 and request.user.is_superuser:
-        rows = Item.objects.all().values_list('id', 'barcode', 'manifest_number__manifest_code', 'sender_name',
-                                              'sender_surname', 'receiver_name', 'receiver_surname',
-                                              'receiver_city', 'receiver_id', 'price', 'currency',
-                                              'weight', 'owner__username', 'owner__company_name',
-                                              'arrived', 'description')
+    
     else:
         rows = Item.objects.filter(owner=request.user).values_list('id', 'barcode', 'manifest_number__manifest_code', 'sender_name',
                                                                    'sender_surname', 'receiver_name', 'receiver_surname',
-                                                                   'receiver_city', 'receiver_id', 'price', 'currency',
+                                                                   'receiver_city', 'receiver_id', 'receiver_number', 'price', 'currency',
                                                                    'weight', 'owner__username', 'owner__company_name',
                                                                    'arrived', 'description')
 
@@ -428,6 +473,7 @@ class ManifestListView(ListAPIView, IsOwnerOrReadOnly):
     permission_classes = [IsOwnerOrReadOnly, IsAuthenticated]
     queryset = Manifest.objects.annotate(total_items=Count('item'))
     serializer_class = ManifestSerializer
+    pagination_class = None
 
     def get_queryset(self):
         owner = self.request.user
