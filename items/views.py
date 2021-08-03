@@ -333,7 +333,7 @@ def export_excel(request):
     items_style = xlwt.easyxf("align: wrap on, horiz left; borders: left thin, right thin, top thin, bottom thin;")
 
     columns = ['ID', 'ბარკოდი', 'მანიფესტის კოდი', 'გამ. სახელი', 'გამ. გვარი',
-               'მიმღ. სახელი', 'მიმღ. გვარი', 'მიმღ. ქალაქი', 'მიმღების ID', 'ტელ. ნომერი' 'ფასი',
+               'მიმღ. სახელი', 'მიმღ. გვარი', 'მიმღ. ქალაქი', 'მიმღების ID', 'ტელ. ნომერი', 'ფასი',
                'ვალუტა', 'წონა', 'ავტორი', 'კომპანია', 'ჩამოსულია', 'აღწერა']
 
     for col_num in range(len(columns)):
@@ -417,7 +417,7 @@ def export_excel_manifest(request):
 
     #columns for items
     columns = ['ID', 'ბარკოდი', 'მანიფესტის კოდი', 'გამ. სახელი', 'გამ. გვარი',
-               'მიმღ. სახელი', 'მიმღ. გვარი', 'მიმღ. ქალაქი', 'მიმღების ID', 'ფასი',
+               'მიმღ. სახელი', 'მიმღ. გვარი', 'მიმღ. ქალაქი', 'მიმღების ID', 'ფასი', 'ტელ. ნომერი', 
                'ვალუტა', 'წონა', 'ავტორი', 'კომპანია', 'ჩამოსულია', 'აღწერა']
 
     #manifest rows
@@ -454,7 +454,7 @@ def export_excel_manifest(request):
     #query item values that are filtered by manifest id
     rows = Item.objects.filter(manifest_number=request.data['manifest_id']).values_list('id', 'barcode', 'manifest_number__manifest_code', 'sender_name',
                                                                         'sender_surname', 'receiver_name', 'receiver_surname',
-                                                                        'receiver_city', 'receiver_id', 'price', 'currency',
+                                                                        'receiver_city', 'receiver_id', 'receiver_number', 'price', 'currency',
                                                                         'weight', 'owner__username', 'owner__company_name', 'arrived',
                                                                         'description')
     
