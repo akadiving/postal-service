@@ -195,7 +195,9 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
-    'PAGE_SIZE': 100
+    'PAGE_SIZE': 100,
+    'DATETIME_FORMAT': "%d-%m-%Y %H:%M:%S",
+    #'DATETIME_INPUT_FORMATS': ["%Y-%m-%d %H:%M:%S", ],
 }
 
 # SWAGGER SETTINGS

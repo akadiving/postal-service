@@ -4,6 +4,7 @@ from rest_framework import permissions, filters, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.generics import ListAPIView, CreateAPIView, RetrieveAPIView, \
     RetrieveUpdateAPIView, RetrieveDestroyAPIView
+from rest_framework.serializers import Serializer
 from .utils import generate_zpl
 from rest_framework.decorators import api_view, permission_classes
 from .models import Item, Manifest
@@ -14,7 +15,8 @@ from django.http import JsonResponse
 from django.db.models import Count
 import xlwt
 import json
-import uuid
+from django.core import serializers
+from django.http import JsonResponse
 from base64 import b64decode
 from django.core.files.base import ContentFile   
 # Create your views here.
@@ -103,6 +105,40 @@ class ItemListView(ListAPIView, IsOwnerOrReadOnly):
             return None
         else:
             return self.queryset.filter(owner=owner)
+
+@api_view(['GET', 'POST'])
+@permission_classes((IsAuthenticated, IsOwnerOrReadOnly))
+def filter_by_date(request):
+    if request.user.is_anonymous:
+        message = {'message': 'You are not allowed to visit this page'}
+        return JsonResponse(message, safe=False)
+    
+    if request.user.is_superuser and request.data['start'] and not request.data['end']:
+        item_list = Item.objects.filter(created_at__gte=request.data['start'])
+
+    elif request.user.is_superuser and request.data['end'] and not request.data['start']:
+        item_list = Item.objects.filter(created_at__lte=request.data['end'])
+
+    elif request.user.is_superuser and request.data['end'] and request.data['start']:
+        item_list = Item.objects.filter(created_at__range=[request.data['start'], request.data['end']])
+
+    elif request.user.groups.filter(name='Company').exists() and request.data['start'] and not request.data['end']:
+        item_list = Item.objects.filter(owner=request.user, created_at__gte=request.data['start'])
+
+    elif request.user.groups.filter(name='Company').exists() and request.data['end'] and not request.data['start']:
+        item_list = Item.objects.filter(owner=request.user, created_at__lte=request.data['end'])
+
+    elif request.user.groups.filter(name='Company').exists() and request.data['end'] and request.data['start']:
+        item_list = Item.objects.filter(owner=request.user, created_at__range=[request.data['start'], request.data['end']])
+    else:
+        return None
+        
+    serializer = ItemSerializer(data=item_list, many=True)
+
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data)
+    return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class AddItemView(CreateAPIView, IsOwnerOrReadOnly):

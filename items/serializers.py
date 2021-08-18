@@ -20,15 +20,19 @@ class ItemSerializer(serializers.ModelSerializer):
         allow_null=True, default=None,
         read_only=True
     )
-    
+    signature = serializers.SerializerMethodField()
+
     class Meta:
         model = Item
-        exclude = ['created_at', 'shelf_number', ]
-        read_only_fields = ['barcode', 'owner', 'company', 'manifest_code', 'signature']
+        exclude = [ 'shelf_number', ]
+        read_only_fields = ['barcode', 'owner', 'company', 'manifest_code', 'signature', 'created_at']
 
     def create(self, validated_data):
         return Item.objects.create(**validated_data)
 
+    def get_signature(self, obj):
+        print(obj)
+        return 'http://127.0.0.1:8000' + obj.signature.url
 
 # serializer for Manifest Model
 
