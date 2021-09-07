@@ -60,7 +60,10 @@ class IteamSearchView(ListAPIView, IsOwnerOrReadOnly):
     serializer_class = ItemSerializer
     filter_backends = [filters.SearchFilter]
     search_fields = ['^barcode', '^owner__username',
-                     '^sender_name', '^receiver_id']
+                     '^sender_name', '^receiver_id',
+                     '^sender_name', 
+                     '^receiver_name', '^receiver_surname',
+                     ]
 
 
     def get_queryset(self):

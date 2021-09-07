@@ -31,8 +31,9 @@ class ItemSerializer(serializers.ModelSerializer):
         return Item.objects.create(**validated_data)
 
     def get_signature(self, obj):
-        print(obj)
-        return 'http://127.0.0.1:8000' + obj.signature.url
+        if obj.signature:
+            return 'http://127.0.0.1:8000' + obj.signature.url
+        return ''
 
 # serializer for Manifest Model
 
