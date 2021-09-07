@@ -10,7 +10,7 @@ User = get_user_model()
 
 
 def generate_barcode():
-    length = 11
+    length = 8
     new = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
     code = ''.join(random.choices(new, k=length))
     full_code = f"MP{code}"

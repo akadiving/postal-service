@@ -61,7 +61,7 @@ class IteamSearchView(ListAPIView, IsOwnerOrReadOnly):
     filter_backends = [filters.SearchFilter]
     search_fields = ['^barcode', '^owner__username',
                      '^sender_name', '^receiver_id',
-                     '^sender_name', 
+                     '^sender_surname', 
                      '^receiver_name', '^receiver_surname',
                      ]
 
