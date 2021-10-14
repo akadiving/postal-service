@@ -32,7 +32,7 @@ class ItemSerializer(serializers.ModelSerializer):
 
     def get_signature(self, obj):
         if obj.signature:
-            return 'https://apimyposta.online' + obj.signature.url
+            return 'http://127.0.0.1:8000' + obj.signature.url
         return ''
 
 # serializer for Manifest Model

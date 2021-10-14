@@ -40,8 +40,6 @@ ALLOWED_HOSTS = ['localhost', '127.0.0.1',
 
 # Application definition
 
-
-
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -148,7 +146,7 @@ USE_I18N = True
 
 USE_L10N = True
 
-USE_TZ = True
+USE_TZ = False
 
 
 
@@ -195,7 +193,7 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
-    'PAGE_SIZE': 200,
+    'PAGE_SIZE': 50,
     'DATETIME_FORMAT': "%d-%m-%Y %H:%M:%S",
     #'DATETIME_INPUT_FORMATS': ["%Y-%m-%d %H:%M:%S", ],
 }

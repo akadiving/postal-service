@@ -1,10 +1,10 @@
 from datetime import datetime
+from rest_framework import generics
 import requests
 from rest_framework import permissions, filters, status
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.generics import ListAPIView, CreateAPIView, RetrieveAPIView, \
     RetrieveUpdateAPIView, RetrieveDestroyAPIView
-from rest_framework.serializers import Serializer
 from .utils import generate_zpl
 from rest_framework.decorators import api_view, permission_classes
 from .models import Item, Manifest
@@ -14,11 +14,12 @@ from django.http import HttpResponse
 from django.http import JsonResponse
 from django.db.models import Count
 import xlwt
-import json
-from django.core import serializers
-from django.http import JsonResponse
+from openpyxl import load_workbook
 from base64 import b64decode
-from django.core.files.base import ContentFile   
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import User
+from django.views.decorators.clickjacking import xframe_options_exempt
+User = get_user_model()
 # Create your views here.
 
 
@@ -44,15 +45,13 @@ class IsOwnerOrReadOnly(permissions.BasePermission):
             return True
         return False
 
-
 class IsOwnerFilterBackend(filters.BaseFilterBackend):
     """
     Filter that only allows users to see their own objects.
     """
 
     def filter_queryset(self, request, queryset, view):
-        return queryset.filter(owner=request.user)
-
+        return queryset.filter(company=request.user.company_name)
 
 class IteamSearchView(ListAPIView, IsOwnerOrReadOnly):
     permission_classes = [IsOwnerOrReadOnly, IsAuthenticated]
@@ -68,13 +67,9 @@ class IteamSearchView(ListAPIView, IsOwnerOrReadOnly):
 
     def get_queryset(self):
         owner = self.request.user
-        if owner.is_superuser:
-            return self.queryset.all()
-        elif owner.is_anonymous:
+        if owner.is_anonymous:
             return None
-        else:
-            return self.queryset.filter(owner=owner)
-
+        return self.queryset.filter(company=owner.company_name)
 
 class IteamSearchDeliveredView(ListAPIView, IsOwnerOrReadOnly):
     permission_classes = [IsOwnerOrReadOnly, IsAuthenticated]
@@ -87,12 +82,9 @@ class IteamSearchDeliveredView(ListAPIView, IsOwnerOrReadOnly):
 
     def get_queryset(self):
         owner = self.request.user
-        if owner.is_superuser:
-            return self.queryset.filter(delivered=True)
-        elif owner.is_anonymous:
+        if owner.is_anonymous:
             return None
-        else:
-            return self.queryset.filter(owner=owner, delivered=True)
+        return self.queryset.filter(delivered=True, company=owner.company_name)
 
 class ItemListView(ListAPIView, IsOwnerOrReadOnly):
     permission_classes = [IsOwnerOrReadOnly, IsAuthenticated]
@@ -102,12 +94,26 @@ class ItemListView(ListAPIView, IsOwnerOrReadOnly):
 
     def get_queryset(self):
         owner = self.request.user
-        if owner.is_superuser:
-            return self.queryset.all()
-        elif owner.is_anonymous:
+        if owner.is_anonymous:
             return None
-        else:
-            return self.queryset.filter(owner=owner)
+        return self.queryset.filter(company=owner.company_name)
+
+@api_view(['GET', 'POST', 'DELETE'])
+@permission_classes((IsAuthenticated, IsOwnerOrReadOnly))
+def stickers(request):
+    # Check if user is authenticated.
+    if request.user.is_anonymous:
+        message = {'message': 'You are not allowed to visit this page'}
+        return JsonResponse(message, safe=False)
+    elif request.method != 'POST':
+        message = {'message': 'You can use only POST method'}
+        return JsonResponse(message, safe=False)
+    obj = Item.objects.filter(id__in=request.data['id']).order_by('created_at')
+    serializer = ItemSerializer(data=obj, many=True, partial=True)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data)
+    return Response(serializer.data, status=status.HTTP_200_OK)
 
 @api_view(['GET', 'POST'])
 @permission_classes((IsAuthenticated, IsOwnerOrReadOnly))
@@ -116,23 +122,25 @@ def filter_by_date(request):
         message = {'message': 'You are not allowed to visit this page'}
         return JsonResponse(message, safe=False)
     
+    owner = request.user
+
     if request.user.is_superuser and request.data['start'] and not request.data['end']:
-        item_list = Item.objects.filter(created_at__gte=request.data['start'])
+        item_list = Item.objects.filter(created_at__gte=request.data['start'], company=owner.company_name)
 
     elif request.user.is_superuser and request.data['end'] and not request.data['start']:
-        item_list = Item.objects.filter(created_at__lte=request.data['end'])
+        item_list = Item.objects.filter(created_at__lte=request.data['end'], company=owner.company_name)
 
     elif request.user.is_superuser and request.data['end'] and request.data['start']:
-        item_list = Item.objects.filter(created_at__range=[request.data['start'], request.data['end']])
+        item_list = Item.objects.filter(created_at__range=[request.data['start'], request.data['end']], company=owner.company_name)
 
     elif request.user.groups.filter(name='Company').exists() and request.data['start'] and not request.data['end']:
-        item_list = Item.objects.filter(owner=request.user, created_at__gte=request.data['start'])
+        item_list = Item.objects.filter(owner=request.user, created_at__gte=request.data['start'], company=owner.company_name)
 
     elif request.user.groups.filter(name='Company').exists() and request.data['end'] and not request.data['start']:
-        item_list = Item.objects.filter(owner=request.user, created_at__lte=request.data['end'])
+        item_list = Item.objects.filter(owner=request.user, created_at__lte=request.data['end'], company=owner.company_name)
 
     elif request.user.groups.filter(name='Company').exists() and request.data['end'] and request.data['start']:
-        item_list = Item.objects.filter(owner=request.user, created_at__range=[request.data['start'], request.data['end']])
+        item_list = Item.objects.filter(owner=request.user, created_at__range=[request.data['start'], request.data['end']], company=owner.company_name)
     else:
         return None
         
@@ -143,7 +151,6 @@ def filter_by_date(request):
         return Response(serializer.data)
     return Response(serializer.data, status=status.HTTP_200_OK)
 
-
 class AddItemView(CreateAPIView, IsOwnerOrReadOnly):
     permission_classes = [IsAuthenticated]
     queryset = Item.objects.all()
@@ -153,7 +160,6 @@ class AddItemView(CreateAPIView, IsOwnerOrReadOnly):
         serializer.save(owner=self.request.user,
                         company=self.request.user.company_name)
 
-
 class UpdateItemView(RetrieveUpdateAPIView, IsOwnerOrReadOnly):
     permission_classes = [IsOwnerOrReadOnly]
     queryset = Item.objects.all()
@@ -161,13 +167,9 @@ class UpdateItemView(RetrieveUpdateAPIView, IsOwnerOrReadOnly):
 
     def get_queryset(self):
         owner = self.request.user
-        if owner.is_superuser:
-            return self.queryset.all()
-        elif owner.is_anonymous:
+        if owner.is_anonymous:
             return None
-        else:
-            return self.queryset.filter(owner=owner)
-
+        return self.queryset.filter(company=owner.company_name)
 
 class DeleteItemView(RetrieveDestroyAPIView, IsOwnerOrReadOnly):
     permission_classes = [IsOwnerOrReadOnly]
@@ -176,14 +178,40 @@ class DeleteItemView(RetrieveDestroyAPIView, IsOwnerOrReadOnly):
 
     def get_queryset(self):
         owner = self.request.user
-        if owner.is_superuser:
-            return self.queryset.all()
-        elif owner.is_anonymous:
+        if owner.is_anonymous:
             return None
-        else:
-            return self.queryset.filter(owner=owner)
+        return self.queryset.filter(company=owner.company_name)
 
+@api_view(['GET', 'POST'])
+@permission_classes((IsAuthenticated, IsOwnerOrReadOnly))
+def get_excel(request):
 
+    # Check if user is authenticated.
+    if request.user.is_anonymous:
+        message = {'message': 'You are not allowed to visit this page'}
+        return JsonResponse(message, safe=False)
+
+    response = HttpResponse(content_type='application/vnd.ms-excel')
+    response['Content-Disposition'] = 'attachment; filename="test.xlsx"'
+
+    wb = xlwt.Workbook(encoding='utf-8')
+    ws = wb.add_sheet('Sample Form')
+    row_num = 0
+    font_style = xlwt.easyxf("font: bold on; align: wrap on, horiz left; borders: left thin, right thin, top thin, bottom thin;")
+    
+    columns = ['ავტორი','მანიფესტის კოდი', 'გამ. სახელი', 'გამ. გვარი', 'გამომ. ქვეყანა',
+            'გამომ. ქალაქი', 'მიმღ. სახელი', 'მიმღ. გვარი', 'მიმღების ID', 'მიმღ. ქვეყანა', 'მიმღ. ქალაქი',
+            'მიმღ. მისამართი','ტელ. ნომერი', 'ფასი', 'ვალუტა', 'წონა', 'კომპანია', 'ჩამოსულია', 'აღწერა']
+
+    for col_num in range(len(columns)):
+        ws.col(col_num).width = int(16*260)
+        ws.write(row_num, col_num, columns[col_num], font_style)
+
+    font_style = xlwt.XFStyle()
+
+    wb.save(response)
+
+    return response
 '''
 @api_view(['GET', 'POST'])
 @permission_classes((IsAuthenticated, IsOwnerOrReadOnly))
@@ -209,8 +237,45 @@ def GeneratePdf(request, pk):
     return response
 
 '''
+@api_view(['GET', 'POST'])
+@permission_classes((IsAuthenticated, IsOwnerOrReadOnly))
+def upload_excel(request):
+    if request.method == 'POST':
+        #item_resource = ItemResource()
+        #dataset = Dataset()
+        new_items = request.FILES['myfile']
 
+        wb = load_workbook(new_items)
+        sheet_ranges = wb['Sample Form']
+        print(sheet_ranges.max_row)
+        number_of_items= 0
+        item_id = []
+        for item in sheet_ranges.iter_rows(min_row=2, values_only=True):
+            value = Item.objects.create(
+                owner = request.user,
+                sender_name = item[0],
+                sender_surname = item[1],
+                company = request.user.company_name,
+                sender_country = item[2],
+                sender_city = item[3],
+                receiver_name = item[4],
+                receiver_surname = item[5],
+                receiver_id = item[6],
+                receiver_country = item[7],
+                receiver_city = item[8],
+                receiver_address = item[9],
+                receiver_number = item[10],
+                price = item[11],
+                currency = item[12],
+                weight = item[13], 
+            )
+            number_of_items += 1
+            item_id.append(value.id)
+            value.save()
+    message = {'message': f'ატვირთულია {number_of_items} ამანათი', "item_id": item_id}
+    return JsonResponse(message, safe=False)
 
+@xframe_options_exempt
 @api_view(['GET', 'POST'])
 @permission_classes((IsAuthenticated, IsOwnerOrReadOnly))
 def Generate_sticker(request, pk):
@@ -232,7 +297,7 @@ def Generate_sticker(request, pk):
     data = [str(obj.barcode), str(obj.get_sender_full_name()),
             str(obj.sender_city), str(obj.weight),
             str(obj.get_receiver_full_name()), str(obj.receiver_number),
-            str(obj.receiver_city), datetime.now().strftime(
+            str(obj.receiver_city), obj.created_at.strftime(
                 "%d-%m-%Y %H:%M:%S"),
             str(obj.owner.company_name)
             ]
@@ -254,7 +319,6 @@ def Generate_sticker(request, pk):
     else:
         print('Error: ' + response.text)
         return response
-
 
 @api_view(['GET', 'POST', 'PATCH'])
 @permission_classes((IsAuthenticated, IsOwnerOrReadOnly))
@@ -363,7 +427,7 @@ def export_excel(request):
         return JsonResponse(message, safe=False)
 
     response = HttpResponse(content_type='application/vnd.ms-excel')
-    response['Content-Disposition'] = 'attachment; filename="test.xlsx"'
+    response['Content-Disposition'] = 'attachment; filename="test.xls"'
 
     wb = xlwt.Workbook(encoding='utf-8')
     ws = wb.add_sheet('ამანათები')
@@ -516,12 +580,9 @@ class ManifestListView(ListAPIView, IsOwnerOrReadOnly):
 
     def get_queryset(self):
         owner = self.request.user
-        if owner.is_superuser:
-            return self.queryset.all()
-        elif owner.is_anonymous:
+        if owner.is_anonymous:
             return None
-        else:
-            return self.queryset.filter(owner=owner)
+        return self.queryset.filter(company=owner.company_name)
 
 
 class ManifestSearchView(ListAPIView):
@@ -534,12 +595,9 @@ class ManifestSearchView(ListAPIView):
 
     def get_queryset(self):
         owner = self.request.user
-        if owner.is_superuser:
-            return self.queryset.all()
-        elif owner.is_anonymous:
+        if owner.is_anonymous:
             return None
-        else:
-            return self.queryset.filter(owner=owner)
+        return self.queryset.filter(company=owner.company_name)
 
 
 class ManifestDetailView(IsOwnerOrReadOnly, RetrieveAPIView):
@@ -554,7 +612,7 @@ class AddManifestView(CreateAPIView, IsOwnerOrReadOnly):
     serializer_class = ManifestSerializer
 
     def perform_create(self, serializer):
-        serializer.save(owner=self.request.user)
+        serializer.save(owner=self.request.user, company=self.request.user.company_name)
 
 
 class UpdateManifestView(RetrieveUpdateAPIView, IsOwnerOrReadOnly):
@@ -564,12 +622,9 @@ class UpdateManifestView(RetrieveUpdateAPIView, IsOwnerOrReadOnly):
 
     def get_queryset(self):
         owner = self.request.user
-        if owner.is_superuser:
-            return self.queryset.all()
-        elif owner.is_anonymous:
+        if owner.is_anonymous:
             return None
-        else:
-            return self.queryset.filter(owner=owner)
+        return self.queryset.filter(company=owner.company_name)
 
 
 class DeleteManifestView(RetrieveDestroyAPIView, IsOwnerOrReadOnly):
@@ -579,9 +634,6 @@ class DeleteManifestView(RetrieveDestroyAPIView, IsOwnerOrReadOnly):
 
     def get_queryset(self):
         owner = self.request.user
-        if owner.is_superuser:
-            return self.queryset.all()
-        elif owner.is_anonymous:
+        if owner.is_anonymous:
             return None
-        else:
-            return self.queryset.filter(owner=owner)
+        return self.queryset.filter(company=owner.company_name)

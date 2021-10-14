@@ -8,6 +8,7 @@ from import_export.admin import ImportExportActionModelAdmin
 @admin.register(Item)
 class ItemAdmin(admin.ModelAdmin):
     list_display = [
+        'id',
         'created_at', 'owner', 'sender_name', 'sender_surname', 'company',
         'sender_country', 'sender_city', 'receiver_name', 'receiver_surname',
         'receiver_id', 'receiver_country', 'receiver_city', 'receiver_address',

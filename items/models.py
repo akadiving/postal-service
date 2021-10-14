@@ -3,7 +3,6 @@ from django.db.models.deletion import CASCADE
 import random
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import User
-from django.core.files import File
 
 User = get_user_model()
 # Create your models here.
@@ -36,6 +35,7 @@ class Manifest(models.Model):
     car_number = models.CharField(max_length=100)
     owner = models.ForeignKey(User, on_delete=CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
+    company = models.CharField(max_length=200, blank=True, null=True)
 
     def __str__(self):
         return f'{self.id}'
@@ -65,13 +65,13 @@ class Item(models.Model):
     receiver_city = models.CharField(max_length=200)
     receiver_address = models.CharField(max_length=200, blank=True)
     receiver_number = models.CharField(max_length=200, blank=True)
-    description = models.TextField(max_length=500, blank=True, default="Personal Items")
+    description = models.TextField(max_length=500, blank=True, default="Personal Items", null=True)
     weight = models.FloatField(blank=True)
     price = models.DecimalField(max_digits=14, decimal_places=2)
     currency = models.CharField(max_length=20, default='USD')
     barcode = models.CharField(
         max_length=200, unique=True, default=generate_barcode)
-    arrived = models.BooleanField(default=False)
+    arrived = models.BooleanField(default=False, null=True)
     manifest_number = models.ForeignKey(Manifest, on_delete=models.SET_NULL,
                                         related_name="item", null=True, default=None, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
