@@ -631,7 +631,7 @@ class DeleteManifestView(RetrieveDestroyAPIView, IsOwnerOrReadOnly):
     permission_classes = [IsOwnerOrReadOnly]
     queryset = Manifest.objects.all()
     serializer_class = ManifestSerializer
-``
+
     def get_queryset(self):
         owner = self.request.user
         if owner.is_anonymous:
