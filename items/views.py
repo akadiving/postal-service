@@ -436,8 +436,9 @@ def export_excel(request):
     items_style = xlwt.easyxf("align: wrap on, horiz left; borders: left thin, right thin, top thin, bottom thin;")
 
     columns = ['ID', 'ბარკოდი', 'მანიფესტის კოდი', 'გამ. სახელი', 'გამ. გვარი',
-               'მიმღ. სახელი', 'მიმღ. გვარი', 'მიმღ. ქალაქი', 'მიმღების ID', 'ტელ. ნომერი', 'ფასი',
-               'ვალუტა', 'წონა', 'ავტორი', 'კომპანია', 'ჩამოსულია', 'აღწერა']
+               'მიმღ. სახელი', 'მიმღ. გვარი', 'მიმღ. ქალაქი', 'მიმღ. მისამართი', 
+               'მიმღების ID', 'ტელ. ნომერი', 'ფასი','ვალუტა', 'წონა', 'ავტორი', 
+               'კომპანია', 'ჩამოსულია', 'აღწერა']
 
     for col_num in range(len(columns)):
         ws.col(col_num).width = int(16*260)
@@ -449,34 +450,34 @@ def export_excel(request):
     if len(request.data['id']) > 0 and request.user.is_superuser:
         rows = Item.objects.filter(id__in=request.data['id']).values_list('id', 'barcode', 'manifest_number__manifest_code', 'sender_name',
                                                                           'sender_surname', 'receiver_name', 'receiver_surname',
-                                                                          'receiver_city', 'receiver_id', 'receiver_number', 'price', 'currency',
+                                                                          'receiver_city', 'receiver_address', 'receiver_id', 'receiver_number', 'price', 'currency',
                                                                           'weight', 'owner__username', 'owner__company_name', 'arrived',
                                                                           'description')
     elif len(request.data['id']) > 0 and request.user.groups.filter(name='Company').exists():
         rows = Item.objects.filter(id__in=request.data['id']).values_list('id', 'barcode', 'manifest_number__manifest_code', 'sender_name',
                                                                           'sender_surname', 'receiver_name', 'receiver_surname',
-                                                                          'receiver_city', 'receiver_id', 'receiver_number', 'price', 'currency',
+                                                                          'receiver_city', 'receiver_address', 'receiver_id', 'receiver_number', 'price', 'currency',
                                                                           'weight', 'owner__username', 'owner__company_name',
                                                                           'arrived', 'description')
 
     elif len(request.data['id']) <= 0 and request.user.is_superuser and request.user.groups.filter(name='Company').exists():
         rows = Item.objects.all().values_list('id', 'barcode', 'manifest_number__manifest_code', 'sender_name',
                                               'sender_surname', 'receiver_name', 'receiver_surname',
-                                              'receiver_city', 'receiver_id', 'receiver_number','price', 'currency',
+                                              'receiver_city', 'receiver_address', 'receiver_id', 'receiver_number','price', 'currency',
                                               'weight', 'owner__username', 'owner__company_name',
                                               'arrived', 'description')
 
     elif len(request.data['id']) <= 0 and request.user.groups.filter(name='Company').exists():
         rows = Item.objects.filter(owner=request.user).values_list('id', 'barcode', 'manifest_number__manifest_code', 'sender_name',
                                                                           'sender_surname', 'receiver_name', 'receiver_surname',
-                                                                          'receiver_city', 'receiver_id', 'receiver_number', 'price', 'currency',
+                                                                          'receiver_city', 'receiver_address', 'receiver_id', 'receiver_number', 'price', 'currency',
                                                                           'weight', 'owner__username', 'owner__company_name',
                                                                           'arrived', 'description')
     
     else:
         rows = Item.objects.filter(owner=request.user).values_list('id', 'barcode', 'manifest_number__manifest_code', 'sender_name',
                                                                    'sender_surname', 'receiver_name', 'receiver_surname',
-                                                                   'receiver_city', 'receiver_id', 'receiver_number', 'price', 'currency',
+                                                                   'receiver_city', 'receiver_address', 'receiver_id', 'receiver_number', 'price', 'currency',
                                                                    'weight', 'owner__username', 'owner__company_name',
                                                                    'arrived', 'description')
 
@@ -520,7 +521,7 @@ def export_excel_manifest(request):
 
     #columns for items
     columns = ['ID', 'ბარკოდი', 'მანიფესტის კოდი', 'გამ. სახელი', 'გამ. გვარი',
-               'მიმღ. სახელი', 'მიმღ. გვარი', 'მიმღ. ქალაქი', 'მიმღების ID', 'ტელ. ნომერი', 'ფასი',
+               'მიმღ. სახელი', 'მიმღ. გვარი', 'მიმღ. ქალაქი', 'მიმღ. მისამართი', 'მიმღების ID', 'ტელ. ნომერი', 'ფასი',
                'ვალუტა', 'წონა', 'ავტორი', 'კომპანია', 'ჩამოსულია', 'აღწერა']
 
     #manifest rows
@@ -557,7 +558,7 @@ def export_excel_manifest(request):
     #query item values that are filtered by manifest id
     rows = Item.objects.filter(manifest_number=request.data['manifest_id']).values_list('id', 'barcode', 'manifest_number__manifest_code', 'sender_name',
                                                                         'sender_surname', 'receiver_name', 'receiver_surname',
-                                                                        'receiver_city', 'receiver_id', 'receiver_number', 'price', 'currency',
+                                                                        'receiver_city', 'receiver_address', 'receiver_id', 'receiver_number', 'price', 'currency',
                                                                         'weight', 'owner__username', 'owner__company_name', 'arrived',
                                                                         'description')
     
