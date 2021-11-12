@@ -62,6 +62,7 @@ class IteamSearchView(ListAPIView, IsOwnerOrReadOnly):
                      '^sender_name', '^receiver_id',
                      '^sender_surname', 
                      '^receiver_name', '^receiver_surname',
+                     '^manifest_number__manifest_code'
                      ]
 
 
@@ -77,7 +78,11 @@ class IteamSearchDeliveredView(ListAPIView, IsOwnerOrReadOnly):
     serializer_class = ItemSerializer
     filter_backends = [filters.SearchFilter]
     search_fields = ['^barcode', '^owner__username',
-                     '^sender_name', '^receiver_id']
+                     '^sender_name', '^receiver_id',
+                     '^sender_surname', 
+                     '^receiver_name', '^receiver_surname',
+                     '^manifest_number__manifest_code'
+                     ]
     pagination_class = None
 
     def get_queryset(self):
